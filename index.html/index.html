@@ -1,0 +1,1237 @@
+HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XXI School AI - Campus & Houses World</title>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #fff; display: flex; height: 100vh; overflow: hidden; }
+    
+    /* Lobby Screen */
+    #lobby-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); display: flex; justify-content: center; align-items: center; z-index: 100; }
+    .card { background: #1e293b; border: 2px solid #38bdf8; border-radius: 12px; padding: 25px; width: 440px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); max-height: 95vh; overflow-y: auto; }
+    .card h1 { color: #38bdf8; font-size: 22px; text-align: center; margin-bottom: 5px; }
+    .sub-link { text-align: center; margin-bottom: 15px; font-size: 12px; }
+    .sub-link a { color: #38bdf8; text-decoration: none; font-weight: bold; }
+    .sub-link a:hover { text-decoration: underline; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+    input, select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; }
+    .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+    button { flex: 1; padding: 10px; background: #0284c7; border: none; color: white; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    button:hover { background: #0369a1; }
+    button.secondary { background: #334155; }
+    button.secondary:hover { background: #475569; }
+
+    /* Main Interface */
+    #game-container { position: relative; flex: 1; display: flex; justify-content: center; align-items: center; background: #0284c7; }
+    canvas { background: #15803d; border: 4px solid #334155; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    
+    #sidebar { width: 320px; background: #0f172a; border-left: 2px solid #334155; display: flex; flex-direction: column; padding: 15px; }
+    h2 { color: #38bdf8; font-size: 18px; margin-bottom: 5px; text-align: center; }
+    .server-badge { background: #1e293b; padding: 8px; border-radius: 6px; font-size: 11px; margin-bottom: 10px; border: 1px solid #334155; word-break: break-all; }
+    #chat-box { flex: 1; background: #1e293b; border-radius: 6px; padding: 10px; overflow-y: auto; margin-bottom: 10px; font-size: 13px; border: 1px solid #334155; }
+    .chat-msg { margin-bottom: 6px; }
+    .chat-msg span { font-weight: bold; color: #38bdf8; }
+    #chat-input-container { display: flex; gap: 5px; }
+
+    /* Quiz Window */
+    #quiz-modal { position: absolute; background: rgba(15, 23, 42, 0.95); border: 2px solid #38bdf8; border-radius: 12px; padding: 20px; width: 360px; text-align: center; display: none; z-index: 50; }
+    .quiz-btn { display: block; width: 100%; margin: 8px 0; background: #334155; }
+    .quiz-btn:hover { background: #0284c7; }
+  </style>
+</head>
+<body>
+
+<!-- LOBBY & SETUP -->
+<div id="lobby-overlay">
+  <div class="card">
+    <h1 id="txt-title">🏫 XXI School AI World</h1>
+    <div class="sub-link">
+      Powered by <a href="https://xxischoolai.com" target="_blank">xxischoolai.com</a>
+    </div>
+    
+    <div class="form-group">
+      <label id="lbl-lang">🌐 Language / Dili Seçin</label>
+      <select id="player-lang" onchange="applyTranslations()">
+        <option value="en">English 🇬🇧</option>
+        <option value="az">Azərbaycan dili 🇦🇿</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label id="lbl-name">Student Name</label>
+      <input type="text" id="player-name" placeholder="Name..." value="Student">
+    </div>
+
+    <div class="form-group">
+      <label id="lbl-grade">Select Grade Level (1 - 11)</label>
+      <select id="player-grade"></select>
+    </div>
+
+    <div class="form-group">
+      <label id="lbl-class">Select Character Class</label>
+      <select id="player-class">
+        <option value="Tech Prodigy">💻 Tech Prodigy (Dark Hair)</option>
+        <option value="Creative Visionary">🎨 Creative Visionary (Blonde Hair)</option>
+        <option value="Class Leader">👑 Class Leader (Red Hair)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label id="lbl-skin">Skin Tone</label>
+      <select id="player-skin">
+        <option value="#fcd34d">Light Skin</option>
+        <option value="#d97706">Medium Skin</option>
+        <option value="#78350f">Dark Skin</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label id="lbl-color">Shirt & Roof Color</label>
+      <input type="color" id="player-color" value="#38bdf8">
+    </div>
+
+    <hr style="border-color: #334155; margin: 15px 0;">
+
+    <div class="btn-group">
+      <button id="btn-create" onclick="createHostServer()">Create Server</button>
+    </div>
+
+    <div class="form-group" style="margin-top: 15px;">
+      <label id="lbl-join">Or Join Server by ID</label>
+      <input type="text" id="join-id-input" placeholder="Server ID...">
+    </div>
+    
+    <button id="btn-join" class="secondary" style="width:100%" onclick="joinExistingServer()">Join Server</button>
+  </div>
+</div>
+
+<!-- GAME CANVAS -->
+<div id="game-container">
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  
+  <div id="quiz-modal">
+    <h3 id="quiz-title" style="color:#38bdf8; margin-bottom:10px;">Desk Task</h3>
+    <p id="quiz-question">Question...</p>
+    <div id="quiz-options"></div>
+    <button id="btn-close-quiz" onclick="closeQuiz()" style="margin-top: 10px; background: #ef4444;">Leave Desk</button>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <h2>XXI School AI</h2>
+  <div class="sub-link" style="margin-bottom:8px;">
+    <a href="https://xxischoolai.com" target="_blank">Visit xxischoolai.com 🔗</a>
+  </div>
+  <div class="server-badge">
+    <strong id="txt-server-label">Server ID:</strong> <span id="my-server-id" style="color:#38bdf8;">Connecting...</span>
+  </div>
+  
+  <div id="chat-box"></div>
+  
+  <div id="chat-input-container">
+    <input type="text" id="chat-msg" placeholder="Chat..." onkeydown="if(event.key==='Enter') sendChat()">
+    <button id="btn-send" onclick="sendChat()">Send</button>
+  </div>
+</div>
+
+<script>
+  // Bilingual Dictionary
+  const i18n = {
+    en: {
+      title: "🏫 XXI School AI World",
+      lblLang: "🌐 Select Language / Dili Seçin",
+      lblName: "Student Name",
+      lblGrade: "Select Grade Level (1 - 11)",
+      lblClass: "Select Character Class",
+      lblSkin: "Skin Tone",
+      lblColor: "Shirt & Roof Color",
+      btnCreate: "Create Server",
+      lblJoin: "Or Join Server by ID",
+      btnJoin: "Join Server",
+      serverLabel: "Server ID:",
+      leaveDesk: "Leave Desk",
+      send: "Send",
+      chatPlaceholder: "Chat with classmates...",
+      correct: "Correct! +10 Points earned on XXI School AI.",
+      incorrect: "Incorrect answer. Try again!",
+      aiLab: "XXI AI Lab",
+      stemClass: "STEM Lab",
+      mainHall: "Main Campus Hall",
+      q1: "What key AI learning feature powers XXI School AI?",
+      q1Opts: ["Interactive Smart Tutoring", "Paper Flashcards", "No Internet Usage"],
+      q2: "Which skill is emphasized on the XXI School AI platform?",
+      q2Opts: ["Rote Copying", "Problem Solving & Critical Thinking", "Manual Drafting"],
+      q3: "What is XXI School AI designed for?",
+      q3Opts: ["21st Century Adaptive Education", "Legacy Testing Only", "Gaming Without Learning"]
+    },
+    az: {
+      title: "🏫 XXI Əsr Məktəbi AI Dünyası",
+      lblLang: "🌐 Language / Dili Seçin",
+      lblName: "Şagirdin Adı",
+      lblGrade: "Sinif Səviyyəsini Seçin (1 - 11)",
+      lblClass: "Xarakter Rolunu Seçin",
+      lblSkin: "Dəri Rəngi",
+      lblColor: "Köynək və Ev Damının Rəngi",
+      btnCreate: "Server Yarat",
+      lblJoin: "Və ya ID ilə Serverə Qoşul",
+      btnJoin: "Serverə Qoşul",
+      serverLabel: "Server ID:",
+      leaveDesk: "Masadan Çıx",
+      send: "Göndər",
+      chatPlaceholder: "Sinif yoldaşlarınla çatlaş...",
+      correct: "Düzgündür! XXI School AI üzrə +10 Xal qazandınız.",
+      incorrect: "Səhv cavab. Yenidən cəhd edin!",
+      aiLab: "XXI Sİ Laboratoriyası",
+      stemClass: "STEM Laboratoriyası",
+      mainHall: "Mərkəzi Kampus Zalı",
+      q1: "XXI School AI platformasında hansı Sİ funksiyası mövcuddur?",
+      q1Opts: ["İnteraktiv Ağıllı Repetitorluq", "Kağız Kartlar", "İnternetsiz İş"],
+      q2: "XXI School AI-da hansı bacarıq öndə tutulur?",
+      q2Opts: ["Əzbərləmək", "Məsələ Həlli və Kritik Təfəkkür", "Mexaniki Yazı"],
+      q3: "XXI School AI platformasının əsas məqsədi nədir?",
+      q3Opts: ["21-ci Əsr Adaptiv Təhsili", "Köhnə İmtahan Sistemi", "Təhsilsiz Oyun"]
+    }
+  };
+
+  // Populate Grades 1 to 11
+  const gradeSelect = document.getElementById('player-grade');
+  for (let i = 1; i <= 11; i++) {
+    let opt = document.createElement('option');
+    opt.value = i;
+    opt.innerText = `Grade ${i} / ${i}-ci Sinif`;
+    gradeSelect.appendChild(opt);
+  }
+
+  function applyTranslations() {
+    const lang = document.getElementById('player-lang').value;
+    const t = i18n[lang];
+
+    document.getElementById('txt-title').innerText = t.title;
+    document.getElementById('lbl-lang').innerText = t.lblLang;
+    document.getElementById('lbl-name').innerText = t.lblName;
+    document.getElementById('lbl-grade').innerText = t.lblGrade;
+    document.getElementById('lbl-class').innerText = t.lblClass;
+    document.getElementById('lbl-skin').innerText = t.lblSkin;
+    document.getElementById('lbl-color').innerText = t.lblColor;
+    document.getElementById('btn-create').innerText = t.btnCreate;
+    document.getElementById('lbl-join').innerText = t.lblJoin;
+    document.getElementById('btn-join').innerText = t.btnJoin;
+    document.getElementById('txt-server-label').innerText = t.serverLabel;
+    document.getElementById('btn-close-quiz').innerText = t.leaveDesk;
+    document.getElementById('btn-send').innerText = t.send;
+    document.getElementById('chat-msg').placeholder = t.chatPlaceholder;
+  }
+
+  applyTranslations();
+
+  // Canvas & Game Setup
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
+
+  let player = { id: '', name: 'Student', role: 'Tech Prodigy', grade: 1, lang: 'en', color: '#38bdf8', skin: '#fcd34d', x: 400, y: 530, dirX: 0, dirY: 1, score: 0 };
+  let otherPlayers = {};
+  let peer = null;
+  let connections = [];
+
+  const schoolBuilding = { x: 50, y: 30, width: 420, height: 350 };
+
+  // Fixed House Positions for Up to 4 Players in the Neighborhood
+  const houseSlots = [
+    { x: 530, y: 60, width: 90, height: 80 },
+    { x: 660, y: 60, width: 90, height: 80 },
+    { x: 530, y: 220, width: 90, height: 80 },
+    { x: 660, y: 220, width: 90, height: 80 }
+  ];
+
+  function getQuizNodes(lang, grade) {
+    const t = i18n[lang];
+    return [
+      { x: 140, y: 120, question: `[Grade ${grade}] ${t.q1}`, options: t.q1Opts, correct: 0, topic: t.aiLab },
+      { x: 350, y: 120, question: `[Grade ${grade}] ${t.q2}`, options: t.q2Opts, correct: 1, topic: t.stemClass },
+      { x: 250, y: 260, question: `[Grade ${grade}] ${t.q3}`, options: t.q3Opts, correct: 0, topic: t.mainHall }
+    ];
+  }
+
+  function initPlayerFromLobby() {
+    player.name = document.getElementById('player-name').value || 'Student';
+    player.role = document.getElementById('player-class').value;
+    player.grade = document.getElementById('player-grade').value;
+    player.lang = document.getElementById('player-lang').value;
+    player.skin = document.getElementById('player-skin').value;
+    player.color = document.getElementById('player-color').value;
+  }
+
+  function createHostServer() {
+    initPlayerFromLobby();
+    const serverId = 'xxi-school-' + Math.floor(Math.random() * 89999 + 10000);
+    startPeerSession(serverId);
+  }
+
+  function joinExistingServer() {
+    initPlayerFromLobby();
+    const targetId = document.getElementById('join-id-input').value.trim();
+    if (!targetId) { alert("Please enter Server ID!"); return; }
+    
+    const localId = 'user-' + Math.floor(Math.random() * 8999 + 1000);
+    startPeerSession(localId, targetId);
+  }
+
+  function startPeerSession(myId, hostToConnect = null) {
+    player.id = myId;
+    peer = new Peer(myId);
+
+    peer.on('open', (id) => {
+      document.getElementById('my-server-id').innerText = id;
+      document.getElementById('lobby-overlay').style.display = 'none';
+      addChatMessage('System', `Welcome to XXI School AI, ${player.name} (Grade ${player.grade})!`);
+
+      if (hostToConnect) {
+        connectToHost(hostToConnect);
+      }
+    });
+
+    peer.on('connection', (conn) => {
+      setupConnection(conn);
+    });
+  }
+
+  function connectToHost(hostId) {
+    const conn = peer.connect(hostId);
+    setupConnection(conn);
+  }
+
+  function setupConnection(conn) {
+    connections.push(conn);
+    
+    conn.on('open', () => {
+      conn.send({ type: 'join', id: player.id, player: player });
+    });
+
+    conn.on('data', (data) => {
+      if (data.type === 'move' || data.type === 'join') {
+        otherPlayers[data.id] = data.player;
+      } else if (data.type === 'chat') {
+        addChatMessage(data.name, data.message);
+      }
+    });
+  }
+
+  function broadcast(data) {
+    connections.forEach(conn => {
+      if (conn.open) conn.send(data);
+    });
+  }
+
+  // Keyboard Movement & Solid Collision Detection
+  const keys = {};
+  window.addEventListener("keydown", (e) => keys[e.key] = true);
+  window.addEventListener("keyup", (e) => keys[e.key] = false);
+
+  function checkHouseCollision(newX, newY) {
+    // Compile all player houses currently rendered on the map
+    let allPlayersList = [player, ...Object.values(otherPlayers)];
+    for (let i = 0; i < allPlayersList.length && i < houseSlots.length; i++) {
+      let h = houseSlots[i];
+      // Pad out collision box slightly so player cannot enter house
+      if (newX + 10 > h.x && newX - 10 < h.x + h.width &&
+          newY + 10 > h.y && newY - 10 < h.y + h.height) {
+        return true; // Collision detected! Cannot enter house.
+      }
+    }
+    return false;
+  }
+
+  function updatePlayer() {
+    let moved = false;
+    const speed = 3;
+    let dx = 0, dy = 0;
+
+    if (keys['w'] || keys['ArrowUp']) { dy -= 1; moved = true; }
+    if (keys['s'] || keys['ArrowDown']) { dy += 1; moved = true; }
+    if (keys['a'] || keys['ArrowLeft']) { dx -= 1; moved = true; }
+    if (keys['d'] || keys['ArrowRight']) { dx += 1; moved = true; }
+
+    if (moved) {
+      let nextX = player.x + dx * speed;
+      let nextY = player.y + dy * speed;
+
+      // Keep within map boundaries
+      nextX = Math.max(20, Math.min(canvas.width - 20, nextX));
+      nextY = Math.max(20, Math.min(canvas.height - 20, nextY));
+
+      // Only move if there is no house blocking the way
+      if (!checkHouseCollision(nextX, player.y)) {
+        player.x = nextX;
+      }
+      if (!checkHouseCollision(player.x, nextY)) {
+        player.y = nextY;
+      }
+
+      player.dirX = dx;
+      player.dirY = dy;
+
+      broadcast({ type: 'move', id: player.id, player: player });
+      checkQuizProximity();
+    }
+  }
+
+  // Quizzes
+  let activeQuiz = null;
+  function checkQuizProximity() {
+    const quizNodes = getQuizNodes(player.lang, player.grade);
+    quizNodes.forEach(node => {
+      let dist = Math.hypot(player.x - node.x, player.y - node.y);
+      if (dist < 30 && activeQuiz !== node) {
+        openQuiz(node);
+      }
+    });
+  }
+
+  function openQuiz(node) {
+    activeQuiz = node;
+    document.getElementById("quiz-modal").style.display = "block";
+    document.getElementById("quiz-title").innerText = node.topic;
+    document.getElementById("quiz-question").innerText = node.question;
+    
+    const optsDiv = document.getElementById("quiz-options");
+    optsDiv.innerHTML = "";
+    node.options.forEach((opt, idx) => {
+      const btn = document.createElement("button");
+      btn.className = "quiz-btn";
+      btn.innerText = opt;
+      btn.onclick = () => answerQuiz(idx === node.correct);
+      optsDiv.appendChild(btn);
+    });
+  }
+
+  function answerQuiz(isCorrect) {
+    const t = i18n[player.lang];
+    if (isCorrect) {
+      player.score += 10;
+      alert(t.correct);
+    } else {
+      alert(t.incorrect);
+    }
+    closeQuiz();
+  }
+
+  function closeQuiz() {
+    document.getElementById("quiz-modal").style.display = "none";
+    activeQuiz = null;
+  }
+
+  // Chat
+  function sendChat() {
+    const input = document.getElementById("chat-msg");
+    const msg = input.value.trim();
+    if (msg) {
+      addChatMessage("You", msg);
+      broadcast({ type: 'chat', name: player.name, message: msg });
+      input.value = "";
+    }
+  }
+
+  function addChatMessage(author, msg) {
+    const chatBox = document.getElementById("chat-box");
+    const div = document.createElement("div");
+    div.className = "chat-msg";
+    div.innerHTML = `<span>${author}:</span> ${msg}`;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  // Render Loop
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // School Campus Grounds
+    ctx.fillStyle = "#334155";
+    ctx.fillRect(schoolBuilding.x - 10, schoolBuilding.y - 10, schoolBuilding.width + 20, schoolBuilding.height + 20);
+    ctx.fillStyle = "#0f172a";
+    ctx.fillRect(schoolBuilding.x, schoolBuilding.y, schoolBuilding.width, schoolBuilding.height);
+
+    // Header Branding
+    ctx.fillStyle = "#38bdf8";
+    ctx.font = "bold 15px sans-serif";
+    ctx.fillText("XXI SCHOOL AI ACADEMY", schoolBuilding.x + 100, schoolBuilding.y - 18);
+
+    // Classrooms
+    const t = i18n[player.lang];
+    const classrooms = [
+      { name: t.aiLab, x: 80, y: 80, width: 160, height: 100, color: "#1e1b4b" },
+      { name: t.stemClass, x: 280, y: 80, width: 160, height: 100, color: "#064e3b" },
+      { name: t.mainHall, x: 80, y: 220, width: 360, height: 120, color: "#312e81" }
+    ];
+
+    classrooms.forEach(room => {
+      ctx.fillStyle = room.color;
+      ctx.fillRect(room.x, room.y, room.width, room.height);
+      ctx.strokeStyle = "#38bdf8";
+      ctx.strokeRect(room.x, room.y, room.width, room.height);
+      
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "11px sans-serif";
+      ctx.fillText(room.name, room.x + 8, room.y + 20);
+    });
+
+    // Draw Houses for All Active Players (Locked - Cannot Enter)
+    let allPlayersList = [player, ...Object.values(otherPlayers)];
+    allPlayersList.forEach((p, idx) => {
+      if (idx < houseSlots.length) {
+        let slot = houseSlots[idx];
+        drawHouse(slot.x, slot.y, slot.width, slot.height, p.color || "#38bdf8", p.name);
+      }
+    });
+
+    // Quiz Desk Nodes
+    const currentQuizNodes = getQuizNodes(player.lang, player.grade);
+    currentQuizNodes.forEach(node => {
+      ctx.fillStyle = "#f59e0b";
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, 12, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = "#000";
+      ctx.font = "bold 10px sans-serif";
+      ctx.fillText("QUIZ", node.x - 13, node.y + 3);
+    });
+
+    // Draw Other Players
+    Object.keys(otherPlayers).forEach(id => {
+      let p = otherPlayers[id];
+      drawHumanAvatar(p.x, p.y, p.skin || "#fcd34d", p.color || "#38bdf8", p.role, p.dirX || 0, p.dirY || 1, `${p.name} (G${p.grade})`);
+    });
+
+    // Draw Local Player
+    if (player.id) {
+      drawHumanAvatar(player.x, player.y, player.skin, player.color, player.role, player.dirX, player.dirY, `${player.name} (G${player.grade} | ${player.score} Pts)`);
+      updatePlayer();
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  // Draw Locked Personal Houses
+  function drawHouse(x, y, width, height, roofColor, ownerName) {
+    // House Main Walls
+    ctx.fillStyle = "#f8fafc";
+    ctx.fillRect(x, y + 25, width, height - 25);
+    ctx.strokeStyle = "#475569";
+    ctx.strokeRect(x, y + 25, width, height - 25);
+
+    // Triangular Roof
+    ctx.fillStyle = roofColor;
+    ctx.beginPath();
+    ctx.moveTo(x - 5, y + 25);
+    ctx.lineTo(x + width / 2, y);
+    ctx.lineTo(x + width + 5, y + 25);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Locked Door
+    ctx.fillStyle = "#78350f";
+    ctx.fillRect(x + width / 2 - 10, y + height - 25, 20, 25);
+
+    // "DO NOT ENTER" Lock Symbol on Door
+    ctx.fillStyle = "#ef4444";
+    ctx.beginPath();
+    ctx.arc(x + width / 2, y + height - 12, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Owner Name Tag on Roof
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`${ownerName}'s House 🔒`, x + width / 2, y - 5);
+  }
+
+  // Realistic Human Avatar Rendering
+  function drawHumanAvatar(x, y, skinColor, shirtColor, role, dirX, dirY, label) {
+    ctx.save();
+    ctx.translate(x, y);
+
+    // Torso / Shirt
+    ctx.fillStyle = shirtColor;
+    ctx.beginPath();
+    ctx.arc(0, 6, 12, 0, Math.PI, false);
+    ctx.fill();
+
+    // Head / Face
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(0, -4, 11, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hair Style & Color based on Class Role
+    let hairColor = "#1e293b";
+    if (role === 'Creative Visionary') hairColor = "#f59e0b";
+    if (role === 'Class Leader') hairColor = "#dc2626";
+
+    ctx.fillStyle = hairColor;
+    ctx.beginPath();
+    ctx.arc(0, -9, 11, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    // Eye direction offsets
+    let eyeOffsetX = dirX * 2;
+    let eyeOffsetY = dirY * 2;
+
+    // Eyes (White)
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(-4 + eyeOffsetX, -4 + eyeOffsetY, 3, 0, Math.PI * 2);
+    ctx.arc(4 + eyeOffsetX, -4 + eyeOffsetY, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Pupils (Black)
+    ctx.fillStyle = "#000000";
+    ctx.beginPath();
+    ctx.arc(-4 + eyeOffsetX, -4 + eyeOffsetY, 1.5, 0, Math.PI * 2);
+    ctx.arc(4 + eyeOffsetX, -4 + eyeOffsetY, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Mouth
+    ctx.strokeStyle = "#9a3412";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0 + eyeOffsetX, 1 + eyeOffsetY, 3, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+
+    ctx.restore();
+
+    // Label Above Player Head
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(label, x, y - 22);
+  }
+
+  draw();
+</script>
+</body>
+</html>HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XXI School AI - Campus & Houses World</title>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #fff; display: flex; height: 100vh; overflow: hidden; }
+    
+    /* Lobby Screen */
+    #lobby-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); display: flex; justify-content: center; align-items: center; z-index: 100; }
+    .card { background: #1e293b; border: 2px solid #38bdf8; border-radius: 12px; padding: 25px; width: 440px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); max-height: 95vh; overflow-y: auto; }
+    .card h1 { color: #38bdf8; font-size: 22px; text-align: center; margin-bottom: 5px; }
+    .sub-link { text-align: center; margin-bottom: 15px; font-size: 12px; }
+    .sub-link a { color: #38bdf8; text-decoration: none; font-weight: bold; }
+    .sub-link a:hover { text-decoration: underline; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+    input, select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; }
+    .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+    button { flex: 1; padding: 10px; background: #0284c7; border: none; color: white; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    button:hover { background: #0369a1; }
+    button.secondary { background: #334155; }
+    button.secondary:hover { background: #475569; }
+
+    /* Main Interface */
+    #game-container { position: relative; flex: 1; display: flex; justify-content: center; align-items: center; background: #0284c7; }
+    canvas { background: #15803d; border: 4px solid #334155; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    
+    #sidebar { width: 320px; background: #0f172a; border-left: 2px solid #334155; display: flex; flex-direction: column; padding: 15px; }
+    h2 { color: #38bdf8; font-size: 18px; margin-bottom: 5px; text-align: center; }
+    .server-badge { background: #1e293b; padding: 8px; border-radius: 6px; font-size: 11px; margin-bottom: 10px; border: 1px solid #334155; word-break: break-all; }
+    #chat-box { flex: 1; background: #1e293b; border-radius: 6px; padding: 10px; overflow-y: auto; margin-bottom: 10px; font-size: 13px; border: 1px solid #334155; }
+    .chat-msg { margin-bottom: 6px; }
+    .chat-msg span { font-weight: bold; color: #38bdf8; }
+    #chat-input-container { display: flex; gap: 5px; }
+
+    /* Quiz Window */
+    #quiz-modal { position: absolute; background: rgba(15, 23, 42, 0.95); border: 2px solid #38bdf8; border-radius: 12px; padding: 20px; width: 360px; text-align: center; display: none; z-index: 50; }
+    .quiz-btn { display: block; width: 100%; margin: 8px 0; background: #334155; }
+    .quiz-btn:hover { background: #0284c7; }
+  </style>
+</head>
+<body>
+
+<!-- LOBBY & SETUP -->
+<div id="lobby-overlay">
+  <div class="card">
+    <h1 id="txt-title">🏫 XXI School AI World</h1>
+    <div class="sub-link">
+      Powered by <a href="https://xxischoolai.com" target="_blank">xxischoolai.com</a>
+    </div>
+    
+    <div class="form-group">
+      <label id="lbl-lang">🌐 Language / Dili Seçin</label>
+      <select id="player-lang" onchange="applyTranslations()">
+        <option value="en">English 🇬🇧</option>
+        <option value="az">Azərbaycan dili 🇦🇿</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label id="lbl-name">Student Name</label>
+      <input type="text" id="player-name" placeholder="Name..." value="Student">
+    </div>
+
+    <div class="form-group">
+      <label id="lbl-grade">Select Grade Level (1 - 11)</label>
+      <select id="player-grade"></select>
+    </div>
+
+    <div class="form-group">
+      <label id="lbl-class">Select Character Class</label>
+      <select id="player-class">
+        <option value="Tech Prodigy">💻 Tech Prodigy (Dark Hair)</option>
+        <option value="Creative Visionary">🎨 Creative Visionary (Blonde Hair)</option>
+        <option value="Class Leader">👑 Class Leader (Red Hair)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label id="lbl-skin">Skin Tone</label>
+      <select id="player-skin">
+        <option value="#fcd34d">Light Skin</option>
+        <option value="#d97706">Medium Skin</option>
+        <option value="#78350f">Dark Skin</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label id="lbl-color">Shirt & Roof Color</label>
+      <input type="color" id="player-color" value="#38bdf8">
+    </div>
+
+    <hr style="border-color: #334155; margin: 15px 0;">
+
+    <div class="btn-group">
+      <button id="btn-create" onclick="createHostServer()">Create Server</button>
+    </div>
+
+    <div class="form-group" style="margin-top: 15px;">
+      <label id="lbl-join">Or Join Server by ID</label>
+      <input type="text" id="join-id-input" placeholder="Server ID...">
+    </div>
+    
+    <button id="btn-join" class="secondary" style="width:100%" onclick="joinExistingServer()">Join Server</button>
+  </div>
+</div>
+
+<!-- GAME CANVAS -->
+<div id="game-container">
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  
+  <div id="quiz-modal">
+    <h3 id="quiz-title" style="color:#38bdf8; margin-bottom:10px;">Desk Task</h3>
+    <p id="quiz-question">Question...</p>
+    <div id="quiz-options"></div>
+    <button id="btn-close-quiz" onclick="closeQuiz()" style="margin-top: 10px; background: #ef4444;">Leave Desk</button>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <h2>XXI School AI</h2>
+  <div class="sub-link" style="margin-bottom:8px;">
+    <a href="https://xxischoolai.com" target="_blank">Visit xxischoolai.com 🔗</a>
+  </div>
+  <div class="server-badge">
+    <strong id="txt-server-label">Server ID:</strong> <span id="my-server-id" style="color:#38bdf8;">Connecting...</span>
+  </div>
+  
+  <div id="chat-box"></div>
+  
+  <div id="chat-input-container">
+    <input type="text" id="chat-msg" placeholder="Chat..." onkeydown="if(event.key==='Enter') sendChat()">
+    <button id="btn-send" onclick="sendChat()">Send</button>
+  </div>
+</div>
+
+<script>
+  // Bilingual Dictionary
+  const i18n = {
+    en: {
+      title: "🏫 XXI School AI World",
+      lblLang: "🌐 Select Language / Dili Seçin",
+      lblName: "Student Name",
+      lblGrade: "Select Grade Level (1 - 11)",
+      lblClass: "Select Character Class",
+      lblSkin: "Skin Tone",
+      lblColor: "Shirt & Roof Color",
+      btnCreate: "Create Server",
+      lblJoin: "Or Join Server by ID",
+      btnJoin: "Join Server",
+      serverLabel: "Server ID:",
+      leaveDesk: "Leave Desk",
+      send: "Send",
+      chatPlaceholder: "Chat with classmates...",
+      correct: "Correct! +10 Points earned on XXI School AI.",
+      incorrect: "Incorrect answer. Try again!",
+      aiLab: "XXI AI Lab",
+      stemClass: "STEM Lab",
+      mainHall: "Main Campus Hall",
+      q1: "What key AI learning feature powers XXI School AI?",
+      q1Opts: ["Interactive Smart Tutoring", "Paper Flashcards", "No Internet Usage"],
+      q2: "Which skill is emphasized on the XXI School AI platform?",
+      q2Opts: ["Rote Copying", "Problem Solving & Critical Thinking", "Manual Drafting"],
+      q3: "What is XXI School AI designed for?",
+      q3Opts: ["21st Century Adaptive Education", "Legacy Testing Only", "Gaming Without Learning"]
+    },
+    az: {
+      title: "🏫 XXI Əsr Məktəbi AI Dünyası",
+      lblLang: "🌐 Language / Dili Seçin",
+      lblName: "Şagirdin Adı",
+      lblGrade: "Sinif Səviyyəsini Seçin (1 - 11)",
+      lblClass: "Xarakter Rolunu Seçin",
+      lblSkin: "Dəri Rəngi",
+      lblColor: "Köynək və Ev Damının Rəngi",
+      btnCreate: "Server Yarat",
+      lblJoin: "Və ya ID ilə Serverə Qoşul",
+      btnJoin: "Serverə Qoşul",
+      serverLabel: "Server ID:",
+      leaveDesk: "Masadan Çıx",
+      send: "Göndər",
+      chatPlaceholder: "Sinif yoldaşlarınla çatlaş...",
+      correct: "Düzgündür! XXI School AI üzrə +10 Xal qazandınız.",
+      incorrect: "Səhv cavab. Yenidən cəhd edin!",
+      aiLab: "XXI Sİ Laboratoriyası",
+      stemClass: "STEM Laboratoriyası",
+      mainHall: "Mərkəzi Kampus Zalı",
+      q1: "XXI School AI platformasında hansı Sİ funksiyası mövcuddur?",
+      q1Opts: ["İnteraktiv Ağıllı Repetitorluq", "Kağız Kartlar", "İnternetsiz İş"],
+      q2: "XXI School AI-da hansı bacarıq öndə tutulur?",
+      q2Opts: ["Əzbərləmək", "Məsələ Həlli və Kritik Təfəkkür", "Mexaniki Yazı"],
+      q3: "XXI School AI platformasının əsas məqsədi nədir?",
+      q3Opts: ["21-ci Əsr Adaptiv Təhsili", "Köhnə İmtahan Sistemi", "Təhsilsiz Oyun"]
+    }
+  };
+
+  // Populate Grades 1 to 11
+  const gradeSelect = document.getElementById('player-grade');
+  for (let i = 1; i <= 11; i++) {
+    let opt = document.createElement('option');
+    opt.value = i;
+    opt.innerText = `Grade ${i} / ${i}-ci Sinif`;
+    gradeSelect.appendChild(opt);
+  }
+
+  function applyTranslations() {
+    const lang = document.getElementById('player-lang').value;
+    const t = i18n[lang];
+
+    document.getElementById('txt-title').innerText = t.title;
+    document.getElementById('lbl-lang').innerText = t.lblLang;
+    document.getElementById('lbl-name').innerText = t.lblName;
+    document.getElementById('lbl-grade').innerText = t.lblGrade;
+    document.getElementById('lbl-class').innerText = t.lblClass;
+    document.getElementById('lbl-skin').innerText = t.lblSkin;
+    document.getElementById('lbl-color').innerText = t.lblColor;
+    document.getElementById('btn-create').innerText = t.btnCreate;
+    document.getElementById('lbl-join').innerText = t.lblJoin;
+    document.getElementById('btn-join').innerText = t.btnJoin;
+    document.getElementById('txt-server-label').innerText = t.serverLabel;
+    document.getElementById('btn-close-quiz').innerText = t.leaveDesk;
+    document.getElementById('btn-send').innerText = t.send;
+    document.getElementById('chat-msg').placeholder = t.chatPlaceholder;
+  }
+
+  applyTranslations();
+
+  // Canvas & Game Setup
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
+
+  let player = { id: '', name: 'Student', role: 'Tech Prodigy', grade: 1, lang: 'en', color: '#38bdf8', skin: '#fcd34d', x: 400, y: 530, dirX: 0, dirY: 1, score: 0 };
+  let otherPlayers = {};
+  let peer = null;
+  let connections = [];
+
+  const schoolBuilding = { x: 50, y: 30, width: 420, height: 350 };
+
+  // Fixed House Positions for Up to 4 Players in the Neighborhood
+  const houseSlots = [
+    { x: 530, y: 60, width: 90, height: 80 },
+    { x: 660, y: 60, width: 90, height: 80 },
+    { x: 530, y: 220, width: 90, height: 80 },
+    { x: 660, y: 220, width: 90, height: 80 }
+  ];
+
+  function getQuizNodes(lang, grade) {
+    const t = i18n[lang];
+    return [
+      { x: 140, y: 120, question: `[Grade ${grade}] ${t.q1}`, options: t.q1Opts, correct: 0, topic: t.aiLab },
+      { x: 350, y: 120, question: `[Grade ${grade}] ${t.q2}`, options: t.q2Opts, correct: 1, topic: t.stemClass },
+      { x: 250, y: 260, question: `[Grade ${grade}] ${t.q3}`, options: t.q3Opts, correct: 0, topic: t.mainHall }
+    ];
+  }
+
+  function initPlayerFromLobby() {
+    player.name = document.getElementById('player-name').value || 'Student';
+    player.role = document.getElementById('player-class').value;
+    player.grade = document.getElementById('player-grade').value;
+    player.lang = document.getElementById('player-lang').value;
+    player.skin = document.getElementById('player-skin').value;
+    player.color = document.getElementById('player-color').value;
+  }
+
+  function createHostServer() {
+    initPlayerFromLobby();
+    const serverId = 'xxi-school-' + Math.floor(Math.random() * 89999 + 10000);
+    startPeerSession(serverId);
+  }
+
+  function joinExistingServer() {
+    initPlayerFromLobby();
+    const targetId = document.getElementById('join-id-input').value.trim();
+    if (!targetId) { alert("Please enter Server ID!"); return; }
+    
+    const localId = 'user-' + Math.floor(Math.random() * 8999 + 1000);
+    startPeerSession(localId, targetId);
+  }
+
+  function startPeerSession(myId, hostToConnect = null) {
+    player.id = myId;
+    peer = new Peer(myId);
+
+    peer.on('open', (id) => {
+      document.getElementById('my-server-id').innerText = id;
+      document.getElementById('lobby-overlay').style.display = 'none';
+      addChatMessage('System', `Welcome to XXI School AI, ${player.name} (Grade ${player.grade})!`);
+
+      if (hostToConnect) {
+        connectToHost(hostToConnect);
+      }
+    });
+
+    peer.on('connection', (conn) => {
+      setupConnection(conn);
+    });
+  }
+
+  function connectToHost(hostId) {
+    const conn = peer.connect(hostId);
+    setupConnection(conn);
+  }
+
+  function setupConnection(conn) {
+    connections.push(conn);
+    
+    conn.on('open', () => {
+      conn.send({ type: 'join', id: player.id, player: player });
+    });
+
+    conn.on('data', (data) => {
+      if (data.type === 'move' || data.type === 'join') {
+        otherPlayers[data.id] = data.player;
+      } else if (data.type === 'chat') {
+        addChatMessage(data.name, data.message);
+      }
+    });
+  }
+
+  function broadcast(data) {
+    connections.forEach(conn => {
+      if (conn.open) conn.send(data);
+    });
+  }
+
+  // Keyboard Movement & Solid Collision Detection
+  const keys = {};
+  window.addEventListener("keydown", (e) => keys[e.key] = true);
+  window.addEventListener("keyup", (e) => keys[e.key] = false);
+
+  function checkHouseCollision(newX, newY) {
+    // Compile all player houses currently rendered on the map
+    let allPlayersList = [player, ...Object.values(otherPlayers)];
+    for (let i = 0; i < allPlayersList.length && i < houseSlots.length; i++) {
+      let h = houseSlots[i];
+      // Pad out collision box slightly so player cannot enter house
+      if (newX + 10 > h.x && newX - 10 < h.x + h.width &&
+          newY + 10 > h.y && newY - 10 < h.y + h.height) {
+        return true; // Collision detected! Cannot enter house.
+      }
+    }
+    return false;
+  }
+
+  function updatePlayer() {
+    let moved = false;
+    const speed = 3;
+    let dx = 0, dy = 0;
+
+    if (keys['w'] || keys['ArrowUp']) { dy -= 1; moved = true; }
+    if (keys['s'] || keys['ArrowDown']) { dy += 1; moved = true; }
+    if (keys['a'] || keys['ArrowLeft']) { dx -= 1; moved = true; }
+    if (keys['d'] || keys['ArrowRight']) { dx += 1; moved = true; }
+
+    if (moved) {
+      let nextX = player.x + dx * speed;
+      let nextY = player.y + dy * speed;
+
+      // Keep within map boundaries
+      nextX = Math.max(20, Math.min(canvas.width - 20, nextX));
+      nextY = Math.max(20, Math.min(canvas.height - 20, nextY));
+
+      // Only move if there is no house blocking the way
+      if (!checkHouseCollision(nextX, player.y)) {
+        player.x = nextX;
+      }
+      if (!checkHouseCollision(player.x, nextY)) {
+        player.y = nextY;
+      }
+
+      player.dirX = dx;
+      player.dirY = dy;
+
+      broadcast({ type: 'move', id: player.id, player: player });
+      checkQuizProximity();
+    }
+  }
+
+  // Quizzes
+  let activeQuiz = null;
+  function checkQuizProximity() {
+    const quizNodes = getQuizNodes(player.lang, player.grade);
+    quizNodes.forEach(node => {
+      let dist = Math.hypot(player.x - node.x, player.y - node.y);
+      if (dist < 30 && activeQuiz !== node) {
+        openQuiz(node);
+      }
+    });
+  }
+
+  function openQuiz(node) {
+    activeQuiz = node;
+    document.getElementById("quiz-modal").style.display = "block";
+    document.getElementById("quiz-title").innerText = node.topic;
+    document.getElementById("quiz-question").innerText = node.question;
+    
+    const optsDiv = document.getElementById("quiz-options");
+    optsDiv.innerHTML = "";
+    node.options.forEach((opt, idx) => {
+      const btn = document.createElement("button");
+      btn.className = "quiz-btn";
+      btn.innerText = opt;
+      btn.onclick = () => answerQuiz(idx === node.correct);
+      optsDiv.appendChild(btn);
+    });
+  }
+
+  function answerQuiz(isCorrect) {
+    const t = i18n[player.lang];
+    if (isCorrect) {
+      player.score += 10;
+      alert(t.correct);
+    } else {
+      alert(t.incorrect);
+    }
+    closeQuiz();
+  }
+
+  function closeQuiz() {
+    document.getElementById("quiz-modal").style.display = "none";
+    activeQuiz = null;
+  }
+
+  // Chat
+  function sendChat() {
+    const input = document.getElementById("chat-msg");
+    const msg = input.value.trim();
+    if (msg) {
+      addChatMessage("You", msg);
+      broadcast({ type: 'chat', name: player.name, message: msg });
+      input.value = "";
+    }
+  }
+
+  function addChatMessage(author, msg) {
+    const chatBox = document.getElementById("chat-box");
+    const div = document.createElement("div");
+    div.className = "chat-msg";
+    div.innerHTML = `<span>${author}:</span> ${msg}`;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  // Render Loop
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // School Campus Grounds
+    ctx.fillStyle = "#334155";
+    ctx.fillRect(schoolBuilding.x - 10, schoolBuilding.y - 10, schoolBuilding.width + 20, schoolBuilding.height + 20);
+    ctx.fillStyle = "#0f172a";
+    ctx.fillRect(schoolBuilding.x, schoolBuilding.y, schoolBuilding.width, schoolBuilding.height);
+
+    // Header Branding
+    ctx.fillStyle = "#38bdf8";
+    ctx.font = "bold 15px sans-serif";
+    ctx.fillText("XXI SCHOOL AI ACADEMY", schoolBuilding.x + 100, schoolBuilding.y - 18);
+
+    // Classrooms
+    const t = i18n[player.lang];
+    const classrooms = [
+      { name: t.aiLab, x: 80, y: 80, width: 160, height: 100, color: "#1e1b4b" },
+      { name: t.stemClass, x: 280, y: 80, width: 160, height: 100, color: "#064e3b" },
+      { name: t.mainHall, x: 80, y: 220, width: 360, height: 120, color: "#312e81" }
+    ];
+
+    classrooms.forEach(room => {
+      ctx.fillStyle = room.color;
+      ctx.fillRect(room.x, room.y, room.width, room.height);
+      ctx.strokeStyle = "#38bdf8";
+      ctx.strokeRect(room.x, room.y, room.width, room.height);
+      
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "11px sans-serif";
+      ctx.fillText(room.name, room.x + 8, room.y + 20);
+    });
+
+    // Draw Houses for All Active Players (Locked - Cannot Enter)
+    let allPlayersList = [player, ...Object.values(otherPlayers)];
+    allPlayersList.forEach((p, idx) => {
+      if (idx < houseSlots.length) {
+        let slot = houseSlots[idx];
+        drawHouse(slot.x, slot.y, slot.width, slot.height, p.color || "#38bdf8", p.name);
+      }
+    });
+
+    // Quiz Desk Nodes
+    const currentQuizNodes = getQuizNodes(player.lang, player.grade);
+    currentQuizNodes.forEach(node => {
+      ctx.fillStyle = "#f59e0b";
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, 12, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = "#000";
+      ctx.font = "bold 10px sans-serif";
+      ctx.fillText("QUIZ", node.x - 13, node.y + 3);
+    });
+
+    // Draw Other Players
+    Object.keys(otherPlayers).forEach(id => {
+      let p = otherPlayers[id];
+      drawHumanAvatar(p.x, p.y, p.skin || "#fcd34d", p.color || "#38bdf8", p.role, p.dirX || 0, p.dirY || 1, `${p.name} (G${p.grade})`);
+    });
+
+    // Draw Local Player
+    if (player.id) {
+      drawHumanAvatar(player.x, player.y, player.skin, player.color, player.role, player.dirX, player.dirY, `${player.name} (G${player.grade} | ${player.score} Pts)`);
+      updatePlayer();
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  // Draw Locked Personal Houses
+  function drawHouse(x, y, width, height, roofColor, ownerName) {
+    // House Main Walls
+    ctx.fillStyle = "#f8fafc";
+    ctx.fillRect(x, y + 25, width, height - 25);
+    ctx.strokeStyle = "#475569";
+    ctx.strokeRect(x, y + 25, width, height - 25);
+
+    // Triangular Roof
+    ctx.fillStyle = roofColor;
+    ctx.beginPath();
+    ctx.moveTo(x - 5, y + 25);
+    ctx.lineTo(x + width / 2, y);
+    ctx.lineTo(x + width + 5, y + 25);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Locked Door
+    ctx.fillStyle = "#78350f";
+    ctx.fillRect(x + width / 2 - 10, y + height - 25, 20, 25);
+
+    // "DO NOT ENTER" Lock Symbol on Door
+    ctx.fillStyle = "#ef4444";
+    ctx.beginPath();
+    ctx.arc(x + width / 2, y + height - 12, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Owner Name Tag on Roof
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`${ownerName}'s House 🔒`, x + width / 2, y - 5);
+  }
+
+  // Realistic Human Avatar Rendering
+  function drawHumanAvatar(x, y, skinColor, shirtColor, role, dirX, dirY, label) {
+    ctx.save();
+    ctx.translate(x, y);
+
+    // Torso / Shirt
+    ctx.fillStyle = shirtColor;
+    ctx.beginPath();
+    ctx.arc(0, 6, 12, 0, Math.PI, false);
+    ctx.fill();
+
+    // Head / Face
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(0, -4, 11, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hair Style & Color based on Class Role
+    let hairColor = "#1e293b";
+    if (role === 'Creative Visionary') hairColor = "#f59e0b";
+    if (role === 'Class Leader') hairColor = "#dc2626";
+
+    ctx.fillStyle = hairColor;
+    ctx.beginPath();
+    ctx.arc(0, -9, 11, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    // Eye direction offsets
+    let eyeOffsetX = dirX * 2;
+    let eyeOffsetY = dirY * 2;
+
+    // Eyes (White)
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(-4 + eyeOffsetX, -4 + eyeOffsetY, 3, 0, Math.PI * 2);
+    ctx.arc(4 + eyeOffsetX, -4 + eyeOffsetY, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Pupils (Black)
+    ctx.fillStyle = "#000000";
+    ctx.beginPath();
+    ctx.arc(-4 + eyeOffsetX, -4 + eyeOffsetY, 1.5, 0, Math.PI * 2);
+    ctx.arc(4 + eyeOffsetX, -4 + eyeOffsetY, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Mouth
+    ctx.strokeStyle = "#9a3412";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0 + eyeOffsetX, 1 + eyeOffsetY, 3, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+
+    ctx.restore();
+
+    // Label Above Player Head
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(label, x, y - 22);
+  }
+
+  draw();
+</script>
+</body>
+</html>
